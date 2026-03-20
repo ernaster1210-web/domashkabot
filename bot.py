@@ -2,8 +2,9 @@ import telebot
 from telebot import types
 from groq import Groq
 
-BOT_TOKEN = "8721126668:AAFxYCTN_2ln-QYsaaknKgTu_0Wn8CtUlso"
-GROQ_API_KEY = "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"
+import os
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 FREE_ANSWERS = 3
 
 bot = telebot.TeleBot(BOT_TOKEN)

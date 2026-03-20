@@ -50,8 +50,8 @@ def start(message):
 
 @bot.message_handler(commands=['myid'])
 def my_id(message):
-    bot.send_message(message.chat.id, f"Твой ID: {message.from_user.id}")
-
+    bot.send_message(message.chat.id, 
+        f"Твой ID: {message.from_user.id}")
 @bot.message_handler(commands=['premium'])
 def give_premium(message):
     if message.from_user.id != ADMIN_ID:

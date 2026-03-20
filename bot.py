@@ -5,7 +5,7 @@ from groq import Groq
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FREE_ANSWERS = 3
+FREE_ANSWERS = 10
 ADMIN_ID = 8497206375
 premium_users = set()
 used_refs = set()

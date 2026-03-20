@@ -21,22 +21,9 @@ def start(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
     balance = get_balance(user_id)
-    
-    args = message.text.split()
-    if len(args) > 1:
-        try:
-            ref_id = int(args[1])
-            if ref_id != user_id and ref_id in user_balance:
-                user_balance[ref_id] = user_balance.get(ref_id, FREE_ANSWERS) + 3
-                bot.send_message(ref_id, "🎉 По твоей ссылке зашёл новый пользователь! +3 ответа!")
-        except:
-            pass
-    
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton("✏️ Задать вопрос"))
     markup.add(types.KeyboardButton("💰 Баланс"), types.KeyboardButton("💎 Подписка"))
     markup.add(types.KeyboardButton("🔗 Поделиться (+3 ответа)"))
-    
     bot.send_message(message.chat.id,
         f"⭐️ Привет, {name}!\n\n"
         f"🤖 Я — УмникКЗ, твой умный помощник для учёбы!\n\n"
@@ -52,8 +39,8 @@ def start(message):
 
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def balance(message):
-    balance = get_balance(message.from_user.id)
-    bot.send_message(message.chat.id, f"💰 Твой баланс: {balance} ответов")
+    b = get_balance(message.from_user.id)
+    bot.send_message(message.chat.id, f"💰 Твой баланс: {b} ответов")
 
 @bot.message_handler(func=lambda m: m.text == "💎 Подписка")
 def subscription(message):
@@ -68,33 +55,24 @@ def share(message):
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"
         f"Твоя ссылка: t.me/KazStudyBot?start={message.from_user.id}")
 
-@bot.message_handler(content_types=['photo'])
-def handle_photo(message):
+@bot.message_handler(func=lambda message: True)
+def answer(message):
     user_id = message.from_user.id
     balance = get_balance(user_id)
-    
     if balance <= 0:
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
         return
-    
     user_balance[user_id] -= 1
-    bot.send_message(message.chat.id, "⏳ Смотрю на задание...")
-    
-    file_info = bot.get_file(message.photo[-1].file_id)
-    file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
-    
+    bot.send_message(message.chat.id, "⏳ Думаю...")
     response = client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "user", "content": [
-                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке."},
-                {"type": "image_url", "image_url": {"url": file_url}}
-            ]}
+            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком."},
+            {"role": "user", "content": message.text}
         ]
     )
-    
     answer_text = response.choices[0].message.content
     remaining = user_balance[user_id]
     bot.send_message(message.chat.id,

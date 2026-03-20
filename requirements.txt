@@ -1,2 +1,2 @@
-python-telegtam-bot
+telebot
 groq

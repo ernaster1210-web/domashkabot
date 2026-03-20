@@ -8,6 +8,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 FREE_ANSWERS = 3
 ADMIN_ID = 8497206375
 premium_users = set()
+used_refs = set()
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
@@ -28,7 +29,8 @@ def start(message):
     if len(args) > 1:
         try:
             ref_id = int(args[1])
-            if ref_id != user_id:
+            if ref_id != user_id and user_id not in used_refs:
+                used_refs.add(user_id)
                 user_balance[ref_id] = user_balance.get(ref_id, FREE_ANSWERS) + 3
                 bot.send_message(ref_id, "🎉 По твоей ссылке зашёл новый пользователь! +3 ответа!")
         except:
@@ -51,8 +53,8 @@ def start(message):
 
 @bot.message_handler(commands=['myid'])
 def my_id(message):
-    bot.send_message(message.chat.id, 
-        f"Твой ID: {message.from_user.id}")
+    bot.send_message(message.chat.id, f"Твой ID: {message.from_user.id}")
+
 @bot.message_handler(commands=['premium'])
 def give_premium(message):
     if message.from_user.id != ADMIN_ID:
@@ -102,22 +104,14 @@ def handle_photo(message):
     bot.send_message(message.chat.id, "⏳ Смотрю на задание...")
     file_info = bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
-   if user_id not in user_history:
-    user_history[user_id] = []
-
-user_history[user_id].append({"role": "user", "content": message.text})
-
-if len(user_history[user_id]) > 10:
-    user_history[user_id] = user_history[user_id][-10:]
-
-response = client.chat.completions.create(
-    model="llama-3.3-70b-versatile",
-    messages=[
-        {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * $ и другое форматирование."}
-    ] + user_history[user_id]
-)
-
-user_history[user_id].append({"role": "assistant", "content": response.choices[0].message.content})
+    response = client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке. Не используй символы # * $ и другое форматирование."},
+                {"type": "image_url", "image_url": {"url": file_url}}
+            ]}
+        ]
     )
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
@@ -137,20 +131,24 @@ def answer(message):
         return
     if user_id not in premium_users:
         user_balance[user_id] -= 1
-    bot.send_message(message.chat.id, "⏳ Думаю...")
+    if user_id not in user_history:
+        user_history[user_id] = []
+    user_history[user_id].append({"role": "user", "content": message.text})
+    if len(user_history[user_id]) > 10:
+        user_history[user_id] = user_history[user_id][-10:]
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * $ и другое форматирование."},
-            {"role": "user", "content": message.text}
-        ]
+            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * $ и другое форматирование."}
+        ] + user_history[user_id]
     )
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
+    user_history[user_id].append({"role": "assistant", "content": answer_text})
     remaining = user_balance.get(user_id, FREE_ANSWERS)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")
 
 bot.polling()
-    
+        

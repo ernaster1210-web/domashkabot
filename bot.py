@@ -101,9 +101,8 @@ def subscription(message):
         "💎 Подписка — безлимитные ответы!\n\n"
         "💰 Стоимость: 500 тенге в месяц\n\n"
         "📩 Для оплаты напиши админу: @mxm1210")
-    
-    @bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
-    
+
+@bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
 def share(message):
     bot.send_message(message.chat.id,
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"
@@ -182,4 +181,3 @@ def answer(message):
         f"💰 Осталось ответов: {remaining}")
 
 bot.polling()
-        

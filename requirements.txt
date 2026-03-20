@@ -1,2 +1,2 @@
-pyTelegtamBotApi
+pytelegtambotapi
 groq

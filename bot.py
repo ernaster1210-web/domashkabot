@@ -81,7 +81,7 @@ def handle_photo(message):
         model="meta-llama/llama-4-scout-17b-16e-instruct",
         messages=[
             {"role": "user", "content": [
-                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке."},
+                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке. Не используй символы # * и другое markdown форматирование."},
                 {"type": "image_url", "image_url": {"url": file_url}}
             ]}
         ]
@@ -91,6 +91,10 @@ def handle_photo(message):
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")
+
+@bot.message_handler(func=lambda message: True)
+def answer(message):
+    user_id = message.from_user.id
     balance = get_balance(user_id)
     if balance <= 0:
         bot.send_message(message.chat.id,
@@ -102,7 +106,7 @@ def handle_photo(message):
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком."},
+            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * и другое markdown форматирование."},
             {"role": "user", "content": message.text}
         ]
     )
@@ -113,8 +117,3 @@ def handle_photo(message):
         f"💰 Осталось ответов: {remaining}")
 
 bot.polling()
-
-@bot.message_handler(func=lambda message: True)
-def answer(message):
-    user_id = message.from_user.id
-    

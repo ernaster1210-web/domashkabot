@@ -101,4 +101,4 @@ def handle_photo(message):
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")
 
-@bot.message_handler(func=lambda message: True)
+bot.polling()

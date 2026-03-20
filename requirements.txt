@@ -1,2 +1,2 @@
-pytelegtambotapi
+pytelegtambotapi=4.14.0
 groq

@@ -1,2 +1,2 @@
-pyTelegtamBotApi
+python-telegtam-bot
 groq

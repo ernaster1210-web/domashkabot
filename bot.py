@@ -130,7 +130,7 @@ def answer(message):
         user_balance[user_id] -= 1
     bot.send_message(message.chat.id, "⏳ Думаю...")
     response = client.chat.completions.create(
-        model="mixtral-8x7b-32768",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * $ и другое форматирование."},
             {"role": "user", "content": message.text}

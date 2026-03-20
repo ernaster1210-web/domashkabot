@@ -103,6 +103,7 @@ def subscription(message):
         "📩 Для оплаты напиши админу: @mxm1210")
     
     @bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
+    
 def share(message):
     bot.send_message(message.chat.id,
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"

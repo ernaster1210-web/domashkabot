@@ -48,12 +48,12 @@ def start(message):
         f"✨ Просто напиши свой вопрос!",
         reply_markup=markup)
 
-@bot.message_handler(commands=['premium'])
-def give_premium(message):
-    @bot.message_handler(commands=['myid'])
+@bot.message_handler(commands=['myid'])
 def my_id(message):
     bot.send_message(message.chat.id, f"Твой ID: {message.from_user.id}")
-    
+
+@bot.message_handler(commands=['premium'])
+def give_premium(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
@@ -102,7 +102,7 @@ def handle_photo(message):
     file_info = bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
     response = client.chat.completions.create(
-    model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         messages=[
             {"role": "user", "content": [
                 {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке. Не используй символы # * $ и другое форматирование."},
@@ -144,3 +144,4 @@ def answer(message):
         f"💰 Осталось ответов: {remaining}")
 
 bot.polling()
+    

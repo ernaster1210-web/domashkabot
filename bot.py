@@ -57,6 +57,22 @@ def my_id(message):
 
 @bot.message_handler(commands=['premium'])
 def give_premium(message):
+    @bot.message_handler(commands=['unpremium'])
+def remove_premium(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        bot.send_message(message.chat.id, "Напиши: /unpremium ID_пользователя")
+        return
+    try:
+        user_id = int(args[1])
+        premium_users.discard(user_id)
+        bot.send_message(message.chat.id, f"✅ Премиум у пользователя {user_id} забран!")
+        bot.send_message(user_id, "❌ Твой премиум закончился. Напиши @mxm1210 для продления.")
+    except:
+        bot.send_message(message.chat.id, "❌ Неверный ID")
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return

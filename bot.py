@@ -90,7 +90,8 @@ def handle_photo(message):
     remaining = user_balance[user_id]
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
-        f"💰 Осталось ответов: {remaining}")balance = get_balance(user_id)
+        f"💰 Осталось ответов: {remaining}")
+    balance = get_balance(user_id)
     if balance <= 0:
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"

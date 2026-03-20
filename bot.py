@@ -64,6 +64,33 @@ def share(message):
     bot.send_message(message.chat.id,
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"
         f"Твоя ссылка: t.me/KazStudyBot?start={message.from_user.id}")
+    @bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    user_id = message.from_user.id
+    balance = get_balance(user_id)
+    if balance <= 0:
+        bot.send_message(message.chat.id,
+            "❌ У тебя закончились ответы!\n\n"
+            "💎 Купи подписку или поделись ботом!")
+        return
+    user_balance[user_id] -= 1
+    bot.send_message(message.chat.id, "⏳ Смотрю на задание...")
+    file_info = bot.get_file(message.photo[-1].file_id)
+    file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+    response = client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке."},
+                {"type": "image_url", "image_url": {"url": file_url}}
+            ]}
+        ]
+    )
+    answer_text = response.choices[0].message.content
+    remaining = user_balance[user_id]
+    bot.send_message(message.chat.id,
+        f"{answer_text}\n\n"
+        f"💰 Осталось ответов: {remaining}")
 
 @bot.message_handler(func=lambda message: True)
 def answer(message):

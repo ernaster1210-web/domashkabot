@@ -5,10 +5,11 @@ from groq import Groq
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FREE_ANSWERS = 10
+FREE_ANSWERS = 3
 ADMIN_ID = 8497206375
 premium_users = set()
 used_refs = set()
+waiting_users = set()
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
@@ -57,23 +58,6 @@ def my_id(message):
 
 @bot.message_handler(commands=['premium'])
 def give_premium(message):
-    @bot.message_handler(commands=['unpremium'])
-def remove_premium(message):
-    
-    if message.from_user.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
-        return
-    args = message.text.split()
-    if len(args) < 2:
-        bot.send_message(message.chat.id, "Напиши: /unpremium ID_пользователя")
-        return
-    try:
-        user_id = int(args[1])
-        premium_users.discard(user_id)
-        bot.send_message(message.chat.id, f"✅ Премиум у пользователя {user_id} забран!")
-        bot.send_message(user_id, "❌ Твой премиум закончился. Напиши @mxm1210 для продления.")
-    except:
-        bot.send_message(message.chat.id, "❌ Неверный ID")
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
@@ -89,6 +73,23 @@ def remove_premium(message):
     except:
         bot.send_message(message.chat.id, "❌ Неверный ID")
 
+@bot.message_handler(commands=['unpremium'])
+def remove_premium(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        bot.send_message(message.chat.id, "Напиши: /unpremium ID_пользователя")
+        return
+    try:
+        user_id = int(args[1])
+        premium_users.discard(user_id)
+        bot.send_message(message.chat.id, f"✅ Премиум у пользователя {user_id} забран!")
+        bot.send_message(user_id, "❌ Твой премиум закончился. Напиши @mxm1210 для продления.")
+    except:
+        bot.send_message(message.chat.id, "❌ Неверный ID")
+
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def balance(message):
     b = get_balance(message.from_user.id)
@@ -100,8 +101,7 @@ def subscription(message):
         "💎 Подписка — безлимитные ответы!\n\n"
         "💰 Стоимость: 500 тенге в месяц\n\n"
         "📩 Для оплаты напиши админу: @mxm1210")
-
-@bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
+    @bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
 def share(message):
     bot.send_message(message.chat.id,
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"
@@ -110,8 +110,13 @@ def share(message):
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user_id = message.from_user.id
+    if user_id in waiting_users:
+        bot.send_message(message.chat.id, "⏳ Подожди, я ещё думаю...")
+        return
+    waiting_users.add(user_id)
     balance = get_balance(user_id)
     if balance <= 0 and user_id not in premium_users:
+        waiting_users.discard(user_id)
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
@@ -133,6 +138,7 @@ def handle_photo(message):
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
     remaining = user_balance.get(user_id, FREE_ANSWERS)
+    waiting_users.discard(user_id)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")
@@ -140,8 +146,13 @@ def handle_photo(message):
 @bot.message_handler(func=lambda message: True)
 def answer(message):
     user_id = message.from_user.id
+    if user_id in waiting_users:
+        bot.send_message(message.chat.id, "⏳ Подожди, я ещё думаю...")
+        return
+    waiting_users.add(user_id)
     balance = get_balance(user_id)
     if balance <= 0 and user_id not in premium_users:
+        waiting_users.discard(user_id)
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
@@ -163,6 +174,7 @@ def answer(message):
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
     user_history[user_id].append({"role": "assistant", "content": answer_text})
     remaining = user_balance.get(user_id, FREE_ANSWERS)
+    waiting_users.discard(user_id)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")

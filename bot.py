@@ -87,6 +87,7 @@ def handle_photo(message):
         ]
     )
     answer_text = response.choices[0].message.content
+    answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
     remaining = user_balance[user_id]
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"

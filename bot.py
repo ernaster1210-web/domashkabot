@@ -39,7 +39,11 @@ def start(message):
         f"💰 Баланс: {balance} ответов\n\n"
         f"✨ Просто напиши свой вопрос!", 
         reply_markup=markup)
-
+    
+@bot.message_handler(func=lambda m: m.text == "✏️ Задать вопрос")
+def ask_question(message):
+    bot.send_message(message.chat.id, "✏️ Напиши свой вопрос и я отвечу!")
+    
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def balance(message):
     balance = get_balance(message.from_user.id)

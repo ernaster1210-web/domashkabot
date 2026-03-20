@@ -6,6 +6,8 @@ from groq import Groq
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 FREE_ANSWERS = 3
+ADMIN_ID = 8497206375
+premium_users = set()
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
@@ -46,6 +48,23 @@ def start(message):
         f"✨ Просто напиши свой вопрос!",
         reply_markup=markup)
 
+@bot.message_handler(commands=['premium'])
+def give_premium(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        bot.send_message(message.chat.id, "Напиши: /premium ID_пользователя")
+        return
+    try:
+        user_id = int(args[1])
+        premium_users.add(user_id)
+        bot.send_message(message.chat.id, f"✅ Пользователь {user_id} получил премиум!")
+        bot.send_message(user_id, "💎 Тебе выдан премиум — безлимитные ответы!")
+    except:
+        bot.send_message(message.chat.id, "❌ Неверный ID")
+
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def balance(message):
     b = get_balance(message.from_user.id)
@@ -68,27 +87,28 @@ def share(message):
 def handle_photo(message):
     user_id = message.from_user.id
     balance = get_balance(user_id)
-    if balance <= 0:
+    if balance <= 0 and user_id not in premium_users:
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
         return
-    user_balance[user_id] -= 1
+    if user_id not in premium_users:
+        user_balance[user_id] -= 1
     bot.send_message(message.chat.id, "⏳ Смотрю на задание...")
     file_info = bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
     response = client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
         messages=[
             {"role": "user", "content": [
-                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке. Не используй символы # * и другое markdown форматирование."},
+                {"type": "text", "text": "Реши это задание. Объясни решение по шагам на русском языке. Не используй символы # * $ и другое форматирование."},
                 {"type": "image_url", "image_url": {"url": file_url}}
             ]}
         ]
     )
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
-    remaining = user_balance[user_id]
+    remaining = user_balance.get(user_id, FREE_ANSWERS)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")
@@ -97,22 +117,24 @@ def handle_photo(message):
 def answer(message):
     user_id = message.from_user.id
     balance = get_balance(user_id)
-    if balance <= 0:
+    if balance <= 0 and user_id not in premium_users:
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
         return
-    user_balance[user_id] -= 1
+    if user_id not in premium_users:
+        user_balance[user_id] -= 1
     bot.send_message(message.chat.id, "⏳ Думаю...")
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * и другое markdown форматирование."},
+            {"role": "system", "content": "Ты умный помощник для казахстанских школьников. Отвечай на русском языке, простым и понятным языком. Не используй символы # * $ и другое форматирование."},
             {"role": "user", "content": message.text}
         ]
     )
     answer_text = response.choices[0].message.content
-    remaining = user_balance[user_id]
+    answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
+    remaining = user_balance.get(user_id, FREE_ANSWERS)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
         f"💰 Осталось ответов: {remaining}")

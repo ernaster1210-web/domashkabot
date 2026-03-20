@@ -101,6 +101,7 @@ def subscription(message):
         "💎 Подписка — безлимитные ответы!\n\n"
         "💰 Стоимость: 500 тенге в месяц\n\n"
         "📩 Для оплаты напиши админу: @mxm1210")
+    
     @bot.message_handler(func=lambda m: m.text == "🔗 Поделиться (+3 ответа)")
 def share(message):
     bot.send_message(message.chat.id,

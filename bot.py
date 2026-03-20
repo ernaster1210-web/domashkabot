@@ -21,6 +21,16 @@ def start(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
     balance = get_balance(user_id)
+    
+    args = message.text.split()
+    if len(args) > 1:
+        try:
+            ref_id = int(args[1])
+            if ref_id != user_id:
+                user_balance[ref_id] = user_balance.get(ref_id, FREE_ANSWERS) + 3
+                bot.send_message(ref_id, "🎉 По твоей ссылке зашёл новый пользователь! +3 ответа!")
+        except:
+            pass
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("💰 Баланс"), types.KeyboardButton("💎 Подписка"))
     markup.add(types.KeyboardButton("🔗 Поделиться (+3 ответа)"))

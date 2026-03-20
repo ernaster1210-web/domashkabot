@@ -21,7 +21,6 @@ def start(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
     balance = get_balance(user_id)
-    
     args = message.text.split()
     if len(args) > 1:
         try:
@@ -64,7 +63,8 @@ def share(message):
     bot.send_message(message.chat.id,
         f"🔗 Поделись ботом с друзьями и получи +3 ответа!\n\n"
         f"Твоя ссылка: t.me/KazStudyBot?start={message.from_user.id}")
-    @bot.message_handler(content_types=['photo'])
+
+@bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user_id = message.from_user.id
     balance = get_balance(user_id)
@@ -90,12 +90,7 @@ def handle_photo(message):
     remaining = user_balance[user_id]
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
-        f"💰 Осталось ответов: {remaining}")
-
-@bot.message_handler(func=lambda message: True)
-def answer(message):
-    user_id = message.from_user.id
-    balance = get_balance(user_id)
+        f"💰 Осталось ответов: {remaining}")balance = get_balance(user_id)
     if balance <= 0:
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
@@ -117,3 +112,8 @@ def answer(message):
         f"💰 Осталось ответов: {remaining}")
 
 bot.polling()
+
+@bot.message_handler(func=lambda message: True)
+def answer(message):
+    user_id = message.from_user.id
+    

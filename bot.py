@@ -2,37 +2,89 @@ import os
 import telebot
 from telebot import types
 from groq import Groq
+import psycopg2
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FREE_ANSWERS = 5
+DATABASE_URL = os.environ.get("DATABASE_URL")
+FREE_ANSWERS = 10
 ADMIN_ID = 8497206375
-premium_users = set()
-used_refs = set()
-waiting_users = set()
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
-user_balance = {}
-user_history = {}
+waiting_users = set()
 
-def get_balance(user_id):
-    if user_id not in user_balance:
-        user_balance[user_id] = FREE_ANSWERS
-    return user_balance[user_id]
+def get_db():
+    return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id BIGINT PRIMARY KEY,
+            balance INT DEFAULT 10,
+            premium BOOLEAN DEFAULT FALSE,
+            used_ref BOOLEAN DEFAULT FALSE
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def get_user(user_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT balance, premium, used_ref FROM users WHERE user_id = %s", (user_id,))
+    user = cur.fetchone()
+    if not user:
+        cur.execute("INSERT INTO users (user_id) VALUES (%s)", (user_id,))
+        conn.commit()
+        user = (FREE_ANSWERS, False, False)
+    cur.close()
+    conn.close()
+    return user
+
+def update_balance(user_id, amount):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET balance = balance + %s WHERE user_id = %s", (amount, user_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def set_premium(user_id, value):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET premium = %s WHERE user_id = %s", (value, user_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def set_used_ref(user_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET used_ref = TRUE WHERE user_id = %s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+init_db()
+user_history = {}
 
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
-    balance = get_balance(user_id)
+    user = get_user(user_id)
+    balance, premium, used_ref = user
     args = message.text.split()
     if len(args) > 1:
         try:
             ref_id = int(args[1])
-            if ref_id != user_id and user_id not in used_refs:
-                used_refs.add(user_id)
-                user_balance[ref_id] = user_balance.get(ref_id, FREE_ANSWERS) + 3
+            if ref_id != user_id and not used_ref:
+                set_used_ref(user_id)
+                update_balance(ref_id, 3)
                 bot.send_message(ref_id, "🎉 По твоей ссылке зашёл новый пользователь! +3 ответа!")
         except:
             pass
@@ -67,13 +119,14 @@ def give_premium(message):
         return
     try:
         user_id = int(args[1])
-        premium_users.add(user_id)
+        get_user(user_id)
+        set_premium(user_id, True)
         bot.send_message(message.chat.id, f"✅ Пользователь {user_id} получил премиум!")
         bot.send_message(user_id, "💎 Тебе выдан премиум — безлимитные ответы!")
     except:
-        bot.send_message(message.chat.id, "❌ Неверный ID")
-
-@bot.message_handler(commands=['unpremium'])
+        bot.send_message(message.chat.id, "❌ Неверный ID
+                         
+        @bot.message_handler(commands=['unpremium'])
 def remove_premium(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
@@ -84,7 +137,7 @@ def remove_premium(message):
         return
     try:
         user_id = int(args[1])
-        premium_users.discard(user_id)
+        set_premium(user_id, False)
         bot.send_message(message.chat.id, f"✅ Премиум у пользователя {user_id} забран!")
         bot.send_message(user_id, "❌ Твой премиум закончился. Напиши @mxm1210 для продления.")
     except:
@@ -92,8 +145,12 @@ def remove_premium(message):
 
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def balance(message):
-    b = get_balance(message.from_user.id)
-    bot.send_message(message.chat.id, f"💰 Твой баланс: {b} ответов")
+    user = get_user(message.from_user.id)
+    balance, premium, _ = user
+    if premium:
+        bot.send_message(message.chat.id, "💎 У тебя премиум — безлимитные ответы!")
+    else:
+        bot.send_message(message.chat.id, f"💰 Твой баланс: {balance} ответов")
 
 @bot.message_handler(func=lambda m: m.text == "💎 Подписка")
 def subscription(message):
@@ -115,15 +172,16 @@ def handle_photo(message):
         bot.send_message(message.chat.id, "⏳ Подожди, я ещё думаю...")
         return
     waiting_users.add(user_id)
-    balance = get_balance(user_id)
-    if balance <= 0 and user_id not in premium_users:
+    user = get_user(user_id)
+    balance, premium, _ = user
+    if balance <= 0 and not premium:
         waiting_users.discard(user_id)
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
         return
-    if user_id not in premium_users:
-        user_balance[user_id] -= 1
+    if not premium:
+        update_balance(user_id, -1)
     bot.send_message(message.chat.id, "⏳ Смотрю на задание...")
     file_info = bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
@@ -138,7 +196,8 @@ def handle_photo(message):
     )
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
-    remaining = user_balance.get(user_id, FREE_ANSWERS)
+    user = get_user(user_id)
+    remaining = user[0]
     waiting_users.discard(user_id)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"
@@ -151,20 +210,22 @@ def answer(message):
         bot.send_message(message.chat.id, "⏳ Подожди, я ещё думаю...")
         return
     waiting_users.add(user_id)
-    balance = get_balance(user_id)
-    if balance <= 0 and user_id not in premium_users:
+    user = get_user(user_id)
+    balance, premium, _ = user
+    if balance <= 0 and not premium:
         waiting_users.discard(user_id)
         bot.send_message(message.chat.id,
             "❌ У тебя закончились ответы!\n\n"
             "💎 Купи подписку или поделись ботом!")
         return
-    if user_id not in premium_users:
-        user_balance[user_id] -= 1
+    if not premium:
+        update_balance(user_id, -1)
     if user_id not in user_history:
         user_history[user_id] = []
-    user_history[user_id].append({"role": "user", "content": message.text})
+        user_history[user_id].append({"role": "user", "content": message.text})
     if len(user_history[user_id]) > 10:
         user_history[user_id] = user_history[user_id][-10:]
+    bot.send_message(message.chat.id, "⏳ Думаю...")
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -174,7 +235,8 @@ def answer(message):
     answer_text = response.choices[0].message.content
     answer_text = answer_text.replace("**", "").replace("##", "").replace("$", "").replace("#", "")
     user_history[user_id].append({"role": "assistant", "content": answer_text})
-    remaining = user_balance.get(user_id, FREE_ANSWERS)
+    user = get_user(user_id)
+    remaining = user[0]
     waiting_users.discard(user_id)
     bot.send_message(message.chat.id,
         f"{answer_text}\n\n"

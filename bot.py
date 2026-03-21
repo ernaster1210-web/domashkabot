@@ -9,7 +9,7 @@ FREE_ANSWERS = 3
 ADMIN_ID = 8497206375
 premium_users = set()
 used_refs = set()
-waiting_users = set()
+waiting_users = set() 
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)

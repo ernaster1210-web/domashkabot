@@ -124,7 +124,7 @@ def give_premium(message):
         bot.send_message(message.chat.id, f"✅ Пользователь {user_id} получил премиум!")
         bot.send_message(user_id, "💎 Тебе выдан премиум — безлимитные ответы!")
     except:
-        bot.send_message(message.chat.id, "❌ Неверный ID
+        bot.send_message(message.chat.id, "❌ Неверный ID")
                          
         @bot.message_handler(commands=['unpremium'])
 def remove_premium(message):

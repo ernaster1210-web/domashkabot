@@ -126,7 +126,7 @@ def give_premium(message):
     except:
         bot.send_message(message.chat.id, "❌ Неверный ID")
                          
-        @bot.message_handler(commands=['unpremium'])
+@bot.message_handler(commands=['unpremium'])
 def remove_premium(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
